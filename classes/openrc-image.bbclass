@@ -39,6 +39,10 @@ openrc_add_services() {
         runlevel=${pair%%:*}
         svc=${pair##*:}
 
+        if [ ! -f ${IMAGE_ROOTFS}${OPENRC_INITDIR}/${svc} ]; then
+            bbfatal "No openrc service named '${svc}' found."
+        fi
+
         [ ! -d ${IMAGE_ROOTFS}${sysconfdir}/runlevels/${runlevel} ] \
             && install -d ${IMAGE_ROOTFS}${sysconfdir}/runlevels/${runlevel}
 
