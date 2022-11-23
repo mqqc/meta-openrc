@@ -1,0 +1,34 @@
+#!/sbin/openrc-run
+
+command="/sbin/acpid"
+command_args="-f ${COMMAND_ARGS}"
+command_background="true"
+pidfile="/var/run/acpid.pid"
+
+depend() {
+    need localmount
+    use logger
+}
+
+start_pre() {
+	# Make sure the acpi dir exists
+	set -- ${COMMAND_ARGS}
+	while [ $# -ne 0 ]; do
+		case ${1} in
+			-c)
+				shift
+				mkdir -p ${1}
+				return
+				;;
+			-c*)
+				mkdir -p ${1#-c}
+				return
+				;;
+		esac
+		shift
+	done
+
+	mkdir -p /etc/acpi
+}
+
+# vim: noet ft=gentoo-init-d
