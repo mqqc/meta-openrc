@@ -20,6 +20,8 @@ SRC_URI += " \
     file://busybox-udhcpd.confd \
     file://busybox-udhcpd.initd \
 "
+SRC_URI:remove = "${@oe.utils.conditional('VIRTUAL-RUNTIME_initscripts', 'openrc', 'rcS.default', '', d)}"
+RDEPENDS:${PN}:remove = "${@oe.utils.conditional('VIRTUAL-RUNTIME_initscripts', 'openrc', 'busybox-inittab', '', d)}"
 
 inherit openrc
 
