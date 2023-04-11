@@ -6,6 +6,8 @@ SRCREV = "3e5420b911922a14dd6b5cc3d2143dc30559caf4"
 SRC_URI = " \
     git://github.com/openrc/openrc.git;nobranch=1;protocol=https \
     file://volatiles.initd \
+    file://getty.confd \
+    file://getty.initd \
 "
 
 S = "${WORKDIR}/git"
@@ -21,17 +23,40 @@ PACKAGECONFIG[selinux] = "-Dselinux=enabled,-Dselinux=disabled,libselinux"
 PACKAGECONFIG[usrmerge] = "-Drootprefix=/usr,-Drootprefix=/"
 PACKAGECONFIG[zsh-completions] = "-Dzsh-completions=true,-Dzsh-completions=false"
 
+openrc_sbindir = "${@bb.utils.contains('PACKAGECONFIG', 'usrmerge', '${sbindir}', '${base_sbindir}', d)}"
+openrc_libdir = "${@bb.utils.contains('PACKAGECONFIG', 'usrmerge', '${libdir}', '${base_libdir}', d)}"
+
 EXTRA_OEMESON += " \
     -Dos=Linux \
     -Dpkg_prefix=${prefix} \
+    -Dsysvinit=true \
 "
+
+USE_VT ?= "1"
+SYSVINIT_ENABLED_GETTYS ?= "1"
+
+add_getty() {
+    local dev="$1"
+    local baud="$2"
+    local term="$3"
+    ln -snf getty ${D}${OPENRC_INITDIR}/getty.${dev}
+    ln -snf ${OPENRC_INITDIR}/getty.${dev} ${D}${sysconfdir}/runlevels/default
+    echo "baud=${baud}" > ${D}${OPENRC_CONFDIR}/getty.${dev}
+    if [ -n "${term}" ]; then
+        echo "term_type=${term}" >> ${D}${OPENRC_CONFDIR}/getty.${dev}
+    fi
+}
 
 do_install:append() {
     # Default sysvinit doesn't do anything with keymaps on a minimal install so
     # we're not going to either.
     rm ${D}${sysconfdir}/runlevels/*/keymaps
 
-    install -m 755 ${WORKDIR}/volatiles.initd ${D}${OPENRC_INITDIR}/volatiles
+    for svc in getty volatiles; do
+        install -m 755 ${WORKDIR}/${svc}.initd ${D}${OPENRC_INITDIR}/${svc}
+        ! [ -f ${WORKDIR}/${svc}.confd ] || install -m 644 ${WORKDIR}/${svc}.confd ${D}${OPENRC_CONFDIR}/${svc}
+        sed -i "s|/sbin/openrc-run|${openrc_sbindir}/openrc-run|" ${D}${OPENRC_INITDIR}/${svc}
+    done
     ln -snf ${OPENRC_INITDIR}/volatiles ${D}${sysconfdir}/runlevels/boot
 
     if ! ${@bb.utils.contains('DISTRO_FEATURES', 'openrc', 'true', 'false', d)}; then
@@ -40,12 +65,29 @@ do_install:append() {
     fi
 
     if ${@bb.utils.contains('PACKAGECONFIG', 'usrmerge', 'true', 'false', d)}; then
-        if [ -f ${D}${base_sbindir}/start-stop-daemon ]; then
-            mv ${D}${base_sbindir}/start-stop-daemon ${D}${sbindir}/start-stop-daemon.openrc
+        if [ -f ${D}${openrc_sbindir}/start-stop-daemon ]; then
+            mv ${D}${openrc_sbindir}/start-stop-daemon ${D}${openrc_sbindir}/start-stop-daemon.openrc
         fi
-        sed -i "s|/sbin/openrc-run|${sbindir}/openrc-run|" ${D}${OPENRC_INITDIR}/volatiles
+    fi
+
+    # Remove bonus TTY scripts installed when -Dsysvinit=true is selected, and add the correct ones.
+    for x in 1 2 3 4 5 6; do
+        rm ${D}${OPENRC_INITDIR}/agetty.tty${x} ${D}${sysconfdir}/runlevels/default/agetty.tty${x}
+    done
+    consoles="$(echo "${SERIAL_CONSOLES}" | tr ';' ',')"
+    for entry in ${consoles}; do
+        dev="$(echo "${entry}" | cut -d, -f2-)"
+        baud="$(echo "${entry}" | cut -d, -f1)"
+        add_getty ${dev} ${baud} vt102
+    done
+    if [ "${USE_VT}" = 1 ]; then
+        for vt in ${SYSVINIT_ENABLED_GETTYS}; do
+            add_getty "tty${vt}" 38400
+        done
     fi
 }
+
+PACKAGES =+ "${PN}-init"
 
 RDEPENDS:${PN} = " \
     kbd \
@@ -61,12 +103,39 @@ RCONFLICTS:${PN} = " \
     init-ifupdown \
     modutils-initscripts \
 "
+RCONFLICTS:${PN}-init = " \
+    ${@oe.utils.str_filter_out(d.expand('${PN}-init'), d.getVar('VIRTUAL-RUNTIME_init_manager'), d)} \
+"
+
+RPROVIDES:${PN}-init = " \
+    ${@oe.utils.conditional('VIRTUAL-RUNTIME_init_manager', d.expand('${PN}-init'), 'virtual/openrc-inittab', '', d)} \
+"
 
 FILES:${PN}-doc:append = " ${datadir}/${BPN}/support"
-FILES:${PN}:append = " ${@bb.utils.contains('PACKAGECONFIG', 'usrmerge', '${libdir}/rc/', '${base_libdir}/rc/', d)}"
+FILES:${PN}:append = " ${openrc_libdir}/rc/"
+FILES:${PN}-init = " \
+    ${openrc_sbindir}/init \
+    ${openrc_sbindir}/halt \
+    ${openrc_sbindir}/poweroff \
+    ${openrc_sbindir}/reboot \
+    ${openrc_sbindir}/shutdown \
+    ${openrc_sbindir}/openrc-init \
+    ${openrc_sbindir}/openrc-shutdown \
+    ${OPENRC_CONFDIR}/getty \
+    ${OPENRC_CONFDIR}/getty.* \
+    ${OPENRC_INITDIR}/getty \
+    ${OPENRC_INITDIR}/getty.* \
+    ${sysconfdir}/runlevels/default/getty.* \
+"
 
 inherit update-alternatives
 
 ALTERNATIVE_PRIORITY = "100"
 ALTERNATIVE:${PN} = "start-stop-daemon"
-ALTERNATIVE_LINK_NAME[start-stop-daemon] = "${@bb.utils.contains('PACKAGECONFIG', 'usrmerge', '${sbindir}', '${base_sbindir}', d)}/start-stop-daemon"
+ALTERNATIVE:${PN}-init = "init halt poweroff reboot shutdown"
+ALTERNATIVE_LINK_NAME[start-stop-daemon] = "${openrc_sbindir}/start-stop-daemon"
+ALTERNATIVE_LINK_NAME[init] = "${openrc_sbindir}/init"
+ALTERNATIVE_LINK_NAME[halt] = "${openrc_sbindir}/halt"
+ALTERNATIVE_LINK_NAME[poweroff] = "${openrc_sbindir}/poweroff"
+ALTERNATIVE_LINK_NAME[reboot] = "${openrc_sbindir}/reboot"
+ALTERNATIVE_LINK_NAME[shutdown] = "${openrc_sbindir}/shutdown"
