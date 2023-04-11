@@ -49,7 +49,7 @@ do_install:append() {
 
 RDEPENDS:${PN} = " \
     kbd \
-    ${@bb.utils.contains('DISTRO_FEATURES', 'openrc', 'openrc-inittab', '', d)} \
+    ${@bb.utils.contains('DISTRO_FEATURES', 'openrc', 'virtual/openrc-inittab', '', d)} \
     procps-sysctl \
     sysvinit \
     util-linux-fsck \

@@ -1,9 +1,10 @@
-SUMMARY = "Inittab configuration for OpenRC"
+SUMMARY = "Sysvinit inittab configuration for OpenRC"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
 
 SRC_URI = "file://inittab.in"
 S = "${WORKDIR}"
+RPROVIDES:${PN} = "${@oe.utils.conditional('VIRTUAL-RUNTIME_init_manager', 'sysvinit', 'virtual/openrc-inittab', '', d)}"
 
 INHIBIT_DEFAULT_DEPS = "1"
 
@@ -24,9 +25,7 @@ python update_inittab() {
     import pathlib
 
     dest = pathlib.Path(d.getVar("D")) / d.getVar("sysconfdir").lstrip('/') / "inittab"
-
-    with dest.open('r') as fp:
-        lines = fp.readlines()
+    lines = dest.read_text().split('\n')
 
     for i, baud, dev in ((i, *x.split(';')) for i, x in enumerate(d.getVar("SERIAL_CONSOLES").split())):
         lines.append(f"s{i}:12345:respawn:${{sbindir}}/getty {baud} {dev} vt102")
@@ -38,9 +37,7 @@ python update_inittab() {
 
     lines.append('')
 
-
-    with dest.open('a') as fp:
-        fp.write('\n'.join(d.expand(l) for l in lines))
+    dest.write_text('\n'.join(d.expand(l) for l in lines))
 }
 
 do_install[postfuncs] += "update_inittab"
