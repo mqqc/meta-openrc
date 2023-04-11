@@ -2,7 +2,7 @@ SUMMARY = "Inittab configuration for OpenRC"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
 
-SRC_URI = "file://inittab"
+SRC_URI = "file://inittab.in"
 S = "${WORKDIR}"
 
 INHIBIT_DEFAULT_DEPS = "1"
@@ -13,29 +13,34 @@ do_compile[noexec] = "1"
 USE_VT ?= "1"
 SYSVINIT_ENABLED_GETTYS ?= "1"
 
+sbindir="${@d.getVar(bb.utils.contains('PACKAGECONFIG', 'usrmerge', 'sbindir', 'base_sbindir', d))}"
+
 do_install() {
     install -d ${D}${sysconfdir}
-    install -m 0644 ${WORKDIR}/inittab ${D}${sysconfdir}/inittab
+    install -m 0644 ${WORKDIR}/inittab.in ${D}${sysconfdir}/inittab
 }
 
 python update_inittab() {
     import pathlib
 
-    lines = []
+    dest = pathlib.Path(d.getVar("D")) / d.getVar("sysconfdir").lstrip('/') / "inittab"
+
+    with dest.open('r') as fp:
+        lines = fp.readlines()
 
     for i, baud, dev in ((i, *x.split(';')) for i, x in enumerate(d.getVar("SERIAL_CONSOLES").split())):
-        lines.append(f"s{i}:12345:respawn:/sbin/getty {baud} {dev} vt102")
+        lines.append(f"s{i}:12345:respawn:${{sbindir}}/getty {baud} {dev} vt102")
 
     if d.getVar("USE_VT") == "1":
         lines.append('')
         for vt in d.getVar("SYSVINIT_ENABLED_GETTYS").split():
-            lines.append(f"{vt}:12345:respawn:/sbin/getty 38400 tty{vt}")
+            lines.append(f"{vt}:12345:respawn:${{sbindir}}/getty 38400 tty{vt}")
 
     lines.append('')
 
-    dest = pathlib.Path(d.getVar("D")) / d.getVar("sysconfdir").lstrip('/') / "inittab"
+
     with dest.open('a') as fp:
-        fp.write('\n'.join(lines))
+        fp.write('\n'.join(d.expand(l) for l in lines))
 }
 
 do_install[postfuncs] += "update_inittab"
