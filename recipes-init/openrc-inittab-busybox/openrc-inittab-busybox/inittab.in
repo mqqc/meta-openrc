@@ -1,0 +1,5 @@
+::sysinit:${sbindir}/openrc sysinit
+::sysinit:${sbindir}/openrc boot
+::wait:${sbindir}/openrc default
+::shutdown:${sbindir}/openrc shutdown
+::ctrlaltdel:${sbindir}/openrc reboot
