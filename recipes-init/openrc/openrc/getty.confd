@@ -1,0 +1,8 @@
+# Set the baud rate of the terminal line
+#baud=""
+
+# set the terminal type
+#term_type="linux"
+
+# extra options to pass to getty for this port
+#getty_options=""
