@@ -87,7 +87,7 @@ do_install:append() {
     fi
 }
 
-PACKAGES =+ "${PN}-init"
+PACKAGES =+ "${PN}-init ${PN}-network-scripts"
 
 RDEPENDS:${PN} = " \
     kbd \
@@ -97,19 +97,24 @@ RDEPENDS:${PN} = " \
     util-linux-fsck \
     util-linux-mount \
     util-linux-umount \
+    virtual/openrc-network-scripts \
 "
+RDEPENDS:${PN}-network-scripts = "${PN}"
 
 RCONFLICTS:${PN} = " \
-    init-ifupdown \
     modutils-initscripts \
 "
 RCONFLICTS:${PN}-init = " \
     ${@oe.utils.str_filter_out(d.expand('${PN}-init'), d.getVar('VIRTUAL-RUNTIME_init_manager'), d)} \
 "
+RCONFLICTS:${PN}-network-scripts = " \
+    init-ifupdown \
+"
 
 RPROVIDES:${PN}-init = " \
     ${@oe.utils.conditional('VIRTUAL-RUNTIME_init_manager', d.expand('${PN}-init'), 'virtual/openrc-inittab', '', d)} \
 "
+RPROVIDES:${PN}-network-scripts = "virtual/openrc-network-scripts"
 
 FILES:${PN}-doc:append = " ${datadir}/${BPN}/support"
 FILES:${PN}:append = " ${openrc_libdir}/rc/"
@@ -126,6 +131,14 @@ FILES:${PN}-init = " \
     ${OPENRC_INITDIR}/getty \
     ${OPENRC_INITDIR}/getty.* \
     ${sysconfdir}/runlevels/default/getty.* \
+"
+FILES:${PN}-network-scripts = " \
+    ${OPENRC_CONFDIR}/network \
+    ${OPENRC_INITDIR}/network \
+    ${OPENRC_CONFDIR}/staticroute \
+    ${OPENRC_INITDIR}/staticroute \
+    ${sysconfdir}/runlevels/boot/network \
+    ${sysconfdir}/runlevels/boot/staticroute \
 "
 
 inherit update-alternatives
