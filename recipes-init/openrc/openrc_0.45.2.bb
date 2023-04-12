@@ -93,7 +93,7 @@ RDEPENDS:${PN} = " \
     kbd \
     ${@bb.utils.contains('DISTRO_FEATURES', 'openrc', 'virtual/openrc-inittab', '', d)} \
     procps-sysctl \
-    sysvinit \
+    ${VIRTUAL-RUNTIME_init_manager} \
     util-linux-fsck \
     util-linux-mount \
     util-linux-umount \
