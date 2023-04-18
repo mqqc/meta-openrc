@@ -1,0 +1,7 @@
+rc_logger="YES"
+unicode="YES"
+rc_tty_number=${tty_count}
+
+respawn_delay=1
+respawn_max=5
+respawn_period=1800

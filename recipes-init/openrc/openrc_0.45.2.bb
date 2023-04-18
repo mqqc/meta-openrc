@@ -5,12 +5,16 @@ SRCREV = "3e5420b911922a14dd6b5cc3d2143dc30559caf4"
 
 SRC_URI = " \
     git://github.com/openrc/openrc.git;nobranch=1;protocol=https \
+    file://rc.conf.in \
     file://volatiles.initd \
     file://getty.confd \
     file://getty.initd \
 "
 
 S = "${WORKDIR}/git"
+
+# for envsubst
+DEPENDS += "gettext-native"
 
 inherit meson
 
@@ -34,6 +38,7 @@ EXTRA_OEMESON += " \
 
 USE_VT ?= "1"
 SYSVINIT_ENABLED_GETTYS ?= "1"
+SYSVINIT_TTY_COUNT = "${@max(int(n) for n in oe.utils.conditional('USE_VT', '1', d.getVar('SYSVINIT_ENABLED_GETTYS') or '0', '0', d).split())}"
 
 add_getty() {
     local dev="$1"
@@ -51,6 +56,9 @@ do_install:append() {
     # Default sysvinit doesn't do anything with keymaps on a minimal install so
     # we're not going to either.
     rm ${D}${sysconfdir}/runlevels/*/keymaps
+
+    tty_count="${SYSVINIT_TTY_COUNT}" \
+        envsubst < ${WORKDIR}/rc.conf.in > ${D}${sysconfdir}/rc.conf
 
     for svc in getty volatiles; do
         install -m 755 ${WORKDIR}/${svc}.initd ${D}${OPENRC_INITDIR}/${svc}
