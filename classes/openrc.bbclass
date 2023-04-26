@@ -24,12 +24,12 @@ openrc_postinst() {
     fi
 
     if [ "${OPENRC_AUTO_ENABLE}" = "enable" ]; then
-        if [ ! -d "$D${sysconfdir}/runlevels/${OPENRC_RUNLEVEL}" ]; then
-            mkdir -p "$D${sysconfdir}/runlevels/${OPENRC_RUNLEVEL}"
+        if [ ! -d "$D${OPENRC_RUNLEVELDIR}/${OPENRC_RUNLEVEL}" ]; then
+            mkdir -p "$D${OPENRC_RUNLEVELDIR}/${OPENRC_RUNLEVEL}"
         fi
 
         for script in ${OPENRC_SERVICES}; do
-            ln -s ${OPENRC_INITDIR}/${script} $D${sysconfdir}/runlevels/${OPENRC_RUNLEVEL}/
+            ln -s ${OPENRC_INITDIR}/${script} $D${OPENRC_RUNLEVELDIR}/${OPENRC_RUNLEVEL}/
         done
     fi
 

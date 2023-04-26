@@ -1,0 +1,482 @@
+From 77312ebbeeb714a78e498a579d73e7acd73eeb5c Mon Sep 17 00:00:00 2001
+From: Mark Cilissen <mcilissen@qblox.com>
+Date: Thu, 20 Apr 2023 15:42:39 +0200
+Subject: [PATCH 1/2] allow changing init.d and conf.d locations
+
+---
+ bash-completion/meson.build                      |  8 +++++++-
+ ...c-service-script => openrc-service-script.in} |  2 +-
+ conf.d/meson.build                               |  4 +---
+ etc/meson.build                                  | 13 +++++++++----
+ etc/{rc.devd => rc.devd.in}                      |  8 ++++----
+ init.d/devfs.in                                  |  5 ++---
+ init.d/hostname.in                               |  2 +-
+ init.d/hwclock.in                                |  2 +-
+ init.d/keymaps.in                                |  2 +-
+ init.d/local.in                                  |  5 ++---
+ init.d/meson.build                               |  4 +---
+ meson.build                                      | 12 +++++++++++-
+ meson_options.txt                                |  4 ++++
+ sh/gendepends.sh.in                              | 16 +++++++---------
+ sh/meson.build                                   |  2 ++
+ sh/openrc-run.sh.in                              | 10 ++++------
+ src/librc/meson.build                            |  2 ++
+ src/librc/rc.h.in                                | 12 ++++++------
+ src/openrc/rc.c                                  |  5 +++--
+ tools/meson_runlevels.sh                         |  7 +++----
+ 20 files changed, 72 insertions(+), 53 deletions(-)
+ rename bash-completion/{openrc-service-script => openrc-service-script.in} (95%)
+ rename etc/{rc.devd => rc.devd.in} (84%)
+
+diff --git a/bash-completion/meson.build b/bash-completion/meson.build
+index fab42720..1c60bf93 100644
+--- a/bash-completion/meson.build
++++ b/bash-completion/meson.build
+@@ -1,7 +1,9 @@
+ if get_option('bash-completions')
++bash_conf_data = configuration_data()
++bash_conf_data.set('RC_INITDIR', rc_initdir)
++
+ bash_completions = [
+   'openrc',
+-  'openrc-service-script',
+   'rc-service',
+   'rc-status',
+   'rc-update',
+@@ -9,4 +11,8 @@ bash_completions = [
+ 
+ install_data(bash_completions,
+   install_dir : get_option('datadir') / 'bash-completion/completions')
++configure_file(input : 'openrc-service-script.in',
++  output : '@BASENAME@',
++  configuration : bash_conf_data,
++  install_dir : get_option('datadir') / 'bash-completion/completions')
+ endif
+diff --git a/bash-completion/openrc-service-script b/bash-completion/openrc-service-script.in
+similarity index 95%
+rename from bash-completion/openrc-service-script
+rename to bash-completion/openrc-service-script.in
+index ec7707a4..64f86100 100644
+--- a/bash-completion/openrc-service-script
++++ b/bash-completion/openrc-service-script.in
+@@ -26,4 +26,4 @@ _openrc_service_script()
+ 	fi
+ 	return 0
+ }
+-complete -F _openrc_service_script */etc/init.d/*
++complete -F _openrc_service_script *@RC_INITDIR@/*
+diff --git a/conf.d/meson.build b/conf.d/meson.build
+index ce704180..273094f4 100644
+--- a/conf.d/meson.build
++++ b/conf.d/meson.build
+@@ -1,5 +1,3 @@
+-conf_d_dir = get_option('sysconfdir') / 'conf.d'
+-
+ conf_common = [
+   'bootmisc',
+   'fsck',
+@@ -58,4 +56,4 @@ elif os == 'NetBSD'
+   conf_data = conf_data + conf_NetBSD
+ endif
+ 
+-install_data(conf_data, install_dir : conf_d_dir)
++install_data(conf_data, install_dir : rc_confdir)
+diff --git a/etc/meson.build b/etc/meson.build
+index fb736ac8..abd6dc09 100644
+--- a/etc/meson.build
++++ b/etc/meson.build
+@@ -1,4 +1,5 @@
+ etc_conf_data = configuration_data()
++etc_conf_data.set('RC_INITDIR', rc_initdir)
+ if os == 'FreeBSD'
+   etc_conf_data.set('TERM', 'cons25')
+ elif os == 'Linux'
+@@ -10,7 +11,7 @@ etc_conf_common = [
+   ]
+ 
+ etc_bin_FreeBSD = [
+-  'rc.devd',
++  'rc.devd.in',
+   ]
+ 
+ etc_conf_FreeBSD = [
+@@ -26,9 +27,13 @@ install_data(etc_conf_common,
+   install_dir : get_option('sysconfdir'))
+ 
+   if os == 'FreeBSD'
+-  install_data(etc_bin_FreeBSD,
+-    install_dir : get_option('sysconfdir'),
+-    install_mode: 'rwxr-xr-x')
++  foreach file : etc_bin_FreeBSD
++    configure_file(input: file,
++      output : '@BASENAME@',
++      configuration : etc_conf_data,
++      install_dir : get_option('sysconfdir'),
++      install_mode: 'rwxr-xr-x')
++  endforeach
+   install_data(etc_conf_FreeBSD,
+     install_dir : get_option('sysconfdir'))
+ endif
+diff --git a/etc/rc.devd b/etc/rc.devd.in
+similarity index 84%
+rename from etc/rc.devd
+rename to etc/rc.devd.in
+index 1f532afe..af8f8835 100644
+--- a/etc/rc.devd
++++ b/etc/rc.devd.in
+@@ -23,17 +23,17 @@ getmedia() {
+ }
+ 
+ # Try and create an init script for network interfaces
+-if [ ! -e /etc/init.d/"$1" -a ! -e /usr/local/init.d/"$1" ]; then
++if [ ! -e @RC_INITDIR@/"$1" -a ! -e /usr/local/init.d/"$1" ]; then
+ 	base=${1%%.*}
+ 	if [ "${base}" = "net" ]; then
+ 		# We only create links for physical interfaces
+ 		[ -n "$(getmedia ${1#*.})" ] || exit 1
+ 		base="net.lo0"
+ 	fi
+-	if [ -e /etc/init.d/"${base}" -a "${base}" != "$1" ]; then
+-		ln -s "${base}" /etc/init.d/"$1"
++	if [ -e @RC_INITDIR@/"${base}" -a "${base}" != "$1" ]; then
++		ln -s "${base}" @RC_INITDIR@/"$1"
+ 	fi
+ fi
+ 
+ # Run the init script
+-exec /etc/init.d/"$1" "$2"
++exec @RC_INITDIR@/"$1" "$2"
+diff --git a/init.d/devfs.in b/init.d/devfs.in
+index 0cc3ba03..fd4546e4 100644
+--- a/init.d/devfs.in
++++ b/init.d/devfs.in
+@@ -20,9 +20,8 @@ depend()
+ 
+ mount_dev()
+ {
+-	local action conf_d_dir devfstype msg mountopts
++	local action devfstype msg mountopts
+ 	action=--mount
+-	conf_d_dir="${RC_SERVICE%/*/*}/conf.d"
+ 	msg=Mounting
+ 	# Some devices require exec, https://bugs.gentoo.org/92921
+ 	# Users with such requirements can use an fstab entry for /dev
+@@ -58,7 +57,7 @@ mount_dev()
+ 		ewarn "is no entry for /dev in fstab."
+ 		ewarn "This means /dev will not be mounted."
+ 		ewarn "To avoid this message, set CONFIG_DEVTMPFS or CONFIG_TMPFS to y"
+-		ewarn "in your kernel configuration or see ${conf_d_dir}/${RC_SVCNAME}"
++		ewarn "in your kernel configuration or see @RC_CONFDIR@/${RC_SVCNAME}"
+ 	fi
+ 	return 0
+ }
+diff --git a/init.d/hostname.in b/init.d/hostname.in
+index 3d70a2f3..c420110e 100644
+--- a/init.d/hostname.in
++++ b/init.d/hostname.in
+@@ -24,7 +24,7 @@ start()
+ 		source="@SYSCONFDIR@/hostname"
+ 	elif [ -n "${hostname}" ]; then
+ 		h=${hostname}
+-		source="@SYSCONFDIR@/conf.d/${RC_SVCNAME}"
++		source="@RC_CONFDIR@/${RC_SVCNAME}"
+ 	fi
+ 	if [ -z "$h" ]; then
+ 		einfo "Using default system hostname"
+diff --git a/init.d/hwclock.in b/init.d/hwclock.in
+index c4c62e62..dc560d15 100644
+--- a/init.d/hwclock.in
++++ b/init.d/hwclock.in
+@@ -105,7 +105,7 @@ start()
+ 			done
+ 			[ -n "$modname" ] &&
+ 				ewarn "The $modname module needs to be configured in" \
+-					"${RC_SERVICE%/*/*}/conf.d/modules or built in."
++					"@RC_CONFDIR@/modules or built in."
+ 		fi
+ 	fi
+ 
+diff --git a/init.d/keymaps.in b/init.d/keymaps.in
+index 48d714a4..7dc46952 100644
+--- a/init.d/keymaps.in
++++ b/init.d/keymaps.in
+@@ -29,7 +29,7 @@ start()
+ 	: ${dumpkeys_charset:=${DUMPKEYS_CHARSET}}
+ 
+ 	if [ -z "$keymap" ]; then
+-		eerror "You need to setup keymap in /etc/conf.d/keymaps first"
++		eerror "You need to setup keymap in @RC_CONFDIR@/${RC_SVCNAME} first"
+ 		return 1
+ 	fi
+ 
+diff --git a/init.d/local.in b/init.d/local.in
+index 1a187d77..8c158eef 100644
+--- a/init.d/local.in
++++ b/init.d/local.in
+@@ -9,7 +9,6 @@
+ # This file may not be copied, modified, propagated, or distributed
+ # except according to the terms contained in the LICENSE file.
+ 
+-conf_d_dir="${RC_SERVICE%/*/*}/conf.d"
+ local_d_dir="${RC_SERVICE%/*/*}/local.d"
+ 
+ description="Executes user programs in ${local_d_dir}"
+@@ -41,7 +40,7 @@ start()
+ 	eoutdent
+ 
+ 	if command -v local_start >/dev/null 2>&1; then
+-		ewarn "\"${conf_d_dir}/local\" should be removed."
++		ewarn "\"@RC_CONFDIR@/local\" should be removed."
+ 		ewarn "Please move the code from the local_start function"
+ 		ewarn "to executable scripts with an .start extension"
+ 		ewarn "in \"${local_d_dir}\""
+@@ -80,7 +79,7 @@ stop()
+ 	eoutdent
+ 
+ 	if command -v local_stop >/dev/null 2>&1; then
+-		ewarn "\"${conf_d_dir}/local\" should be removed."
++		ewarn "\"@RC_CONFDIR@/local\" should be removed."
+ 		ewarn "Please move the code from the local_stop function"
+ 		ewarn "to executable scripts with an .stop extension"
+ 		ewarn "in \"${local_d_dir}\""
+diff --git a/init.d/meson.build b/init.d/meson.build
+index ab4b27f4..879a2314 100644
+--- a/init.d/meson.build
++++ b/init.d/meson.build
+@@ -1,5 +1,3 @@
+-init_d_dir = get_option('sysconfdir') / 'init.d'
+-
+ init_common =  [
+   'bootmisc.in',
+   'fsck.in',
+@@ -96,6 +94,6 @@ foreach init_d_file : init_data
+   configure_file(input : init_d_file,
+     output : '@BASENAME@',
+     configuration : init_d_conf_data,
+-    install_dir: init_d_dir,
++    install_dir: rc_initdir,
+     install_mode: 'rwxr-xr-x')
+ endforeach
+diff --git a/meson.build b/meson.build
+index cf366706..a1b062ed 100644
+--- a/meson.build
++++ b/meson.build
+@@ -108,6 +108,14 @@ rc_sbindir = rc_libexecdir / 'sbin'
+ rc_shdir = rc_libexecdir / 'sh'
+ sbindir = rootprefix / get_option('sbindir')
+ pamdir = get_option('sysconfdir') / 'pam.d'
++rc_initdir = get_option('rc-initdir')
++if rc_initdir == ''
++  rc_initdir = get_option('sysconfdir') / 'init.d'
++endif
++rc_confdir = get_option('rc-confdir')
++if rc_confdir == ''
++  rc_confdir = get_option('sysconfdir') / 'conf.d'
++endif
+ 
+ crypt_dep = []
+ 
+@@ -200,6 +208,7 @@ init_d_conf_data = configuration_data()
+ init_d_conf_data.set('SBINDIR', sbindir)
+ init_d_conf_data.set('PKG_PREFIX', pkg_prefix)
+ init_d_conf_data.set('SYSCONFDIR', get_option('sysconfdir'))
++init_d_conf_data.set('RC_CONFDIR', rc_confdir)
+ 
+ dl_dep = cc.find_library('dl', required: false)
+ util_dep = cc.find_library('util', required: false)
+@@ -222,7 +231,8 @@ meson.add_install_script('tools/meson_runlevels.sh',
+   os,
+   get_option('newnet') ? 'yes' : 'no',
+   rc_libexecdir,
+-  get_option('sysconfdir'),
++  rc_initdir,
++  get_option('sysconfdir') / 'runlevels',
+   get_option('sysvinit') ? 'yes' : 'no')
+ meson.add_install_script('tools/meson_final.sh',
+   rc_libexecdir,
+diff --git a/meson_options.txt b/meson_options.txt
+index 2c74152e..87adf70e 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -20,6 +20,10 @@ option('pkg_prefix', type : 'string',
+   description : 'default location where packages are installed')
+ option('pkgconfig', type : 'boolean',
+   description : 'build PKGConfig files')
++option('rc-confdir', type : 'string',
++  description : 'default location of configuration scripts in prefix')
++option('rc-initdir', type : 'string',
++  description : 'default location of init scripts in prefix')
+ option('rootprefix', type : 'string',
+   description : 'override the root prefix')
+ option('selinux', type : 'feature', value : 'auto',
+diff --git a/sh/gendepends.sh.in b/sh/gendepends.sh.in
+index 5852c772..7e45a247 100644
+--- a/sh/gendepends.sh.in
++++ b/sh/gendepends.sh.in
+@@ -54,11 +54,9 @@ depend() {
+ }
+ 
+ _done_dirs=
+-for _dir in \
+-@SYSCONFDIR@/init.d \
+-@PKG_PREFIX@/etc/init.d \
+-@LOCAL_PREFIX@/etc/init.d
+-do
++for _prefix in '' @PKG_PREFIX@ @LOCAL_PREFIX@; do
++	_dir="$_prefix@RC_INITDIR@"
++	_cdir="$_prefix@RC_CONFDIR@"
+ 	[ -d "$_dir" ] || continue
+ 
+ 	# Don't do the same dir twice
+@@ -103,14 +101,14 @@ do
+ 
+ 		_rc_c=${RC_SVCNAME%%.*}
+ 		if [ -n "$_rc_c" -a "$_rc_c" != "$RC_SVCNAME" ]; then
+-			if [ -e "$_dir/../conf.d/$_rc_c" ]; then
+-				. "$_dir/../conf.d/$_rc_c"
++			if [ -e "$_cdir/$_rc_c" ]; then
++				. "$_cdir/$_rc_c"
+ 			fi
+ 		fi
+ 		unset _rc_c
+ 
+-		if [ -e "$_dir/../conf.d/$RC_SVCNAME" ]; then
+-			. "$_dir/../conf.d/$RC_SVCNAME"
++		if [ -e "$_cdir/$RC_SVCNAME" ]; then
++			. "$_cdir/$RC_SVCNAME"
+ 		fi
+ 
+ 		[ -e @SYSCONFDIR@/rc.conf ] && . @SYSCONFDIR@/rc.conf
+diff --git a/sh/meson.build b/sh/meson.build
+index e8849d40..aaf5381e 100644
+--- a/sh/meson.build
++++ b/sh/meson.build
+@@ -11,6 +11,8 @@ sh_conf_data.set('PKG_PREFIX', pkg_prefix)
+ sh_conf_data.set('SBINDIR', sbindir)
+ sh_conf_data.set('SHELL', get_option('shell'))
+ sh_conf_data.set('SYSCONFDIR', get_option('sysconfdir'))
++sh_conf_data.set('RC_INITDIR', rc_initdir)
++sh_conf_data.set('RC_CONFDIR', rc_confdir)
+ 
+ sh = [
+   'rc-functions.sh',
+diff --git a/sh/openrc-run.sh.in b/sh/openrc-run.sh.in
+index 5d0eeffa..0b83487f 100644
+--- a/sh/openrc-run.sh.in
++++ b/sh/openrc-run.sh.in
+@@ -220,21 +220,19 @@ if [ -d "@SYSCONFDIR@/rc.conf.d" ]; then
+ 	done
+ fi
+ 
+-_conf_d=${RC_SERVICE%/*}/../conf.d
+ # If we're net.eth0 or openvpn.work then load net or openvpn config
+ _c=${RC_SVCNAME%%.*}
+ if [ -n "$_c" -a "$_c" != "$RC_SVCNAME" ]; then
+-	if ! sourcex -e "$_conf_d/$_c.$RC_RUNLEVEL"; then
+-		sourcex -e "$_conf_d/$_c"
++	if ! sourcex -e "@RC_CONFDIR@/$_c.$RC_RUNLEVEL"; then
++		sourcex -e "@RC_CONFDIR@/$_c"
+ 	fi
+ fi
+ unset _c
+ 
+ # Overlay with our specific config
+-if ! sourcex -e "$_conf_d/$RC_SVCNAME.$RC_RUNLEVEL"; then
+-	sourcex -e "$_conf_d/$RC_SVCNAME"
++if ! sourcex -e "@RC_CONFDIR@/$RC_SVCNAME.$RC_RUNLEVEL"; then
++	sourcex -e "@RC_CONFDIR@/$RC_SVCNAME"
+ fi
+-unset _conf_d
+ 
+ # load service supervisor functions
+ sourcex "@LIBEXECDIR@/sh/runit.sh"
+diff --git a/src/librc/meson.build b/src/librc/meson.build
+index 30caa1f3..d6d13bb5 100644
+--- a/src/librc/meson.build
++++ b/src/librc/meson.build
+@@ -9,6 +9,8 @@ rc_h_conf_data.set('LIBEXECDIR', rc_libexecdir)
+ rc_h_conf_data.set('LOCAL_PREFIX', local_prefix)
+ rc_h_conf_data.set('PKG_PREFIX', pkg_prefix)
+ rc_h_conf_data.set('SYSCONFDIR', get_option('sysconfdir'))
++rc_h_conf_data.set('RC_INITDIR', rc_initdir)
++rc_h_conf_data.set('RC_CONFDIR', rc_confdir)
+ 
+ librc_version = '1'
+ 
+diff --git a/src/librc/rc.h.in b/src/librc/rc.h.in
+index 69d9d0e4..642b2b7f 100644
+--- a/src/librc/rc.h.in
++++ b/src/librc/rc.h.in
+@@ -35,8 +35,8 @@ extern "C" {
+ #define RC_SVCDIR               RC_LIBEXECDIR "/init.d"
+ #endif
+ #define RC_RUNLEVELDIR          RC_SYSCONFDIR "/runlevels"
+-#define RC_INITDIR              RC_SYSCONFDIR "/init.d"
+-#define RC_CONFDIR              RC_SYSCONFDIR "/conf.d"
++#define RC_INITDIR              "@RC_INITDIR@"
++#define RC_CONFDIR              "@RC_CONFDIR@"
+ #define RC_PLUGINDIR            RC_LIBDIR "/plugins"
+ 
+ #define RC_INIT_FIFO RC_SVCDIR"/init.ctl"
+@@ -54,16 +54,16 @@ extern "C" {
+  * /usr/pkg. */
+ #define RC_PKG_PREFIX		"@PKG_PREFIX@"
+ #ifdef RC_PKG_PREFIX
+-#  define RC_PKG_INITDIR        RC_PKG_PREFIX "/etc/init.d"
+-#  define RC_PKG_CONFDIR        RC_PKG_PREFIX "/etc/conf.d"
++#  define RC_PKG_INITDIR        RC_PKG_PREFIX "@RC_INITDIR@"
++#  define RC_PKG_CONFDIR        RC_PKG_PREFIX "@RC_CONFDIR@"
+ #endif
+ 
+ /* LOCAL_PREFIX is for user written stuff, which the base OS and package
+  * manger don't touch. */
+ #define RC_LOCAL_PREFIX		"@LOCAL_PREFIX@"
+ #ifdef RC_LOCAL_PREFIX
+-#  define RC_LOCAL_INITDIR      RC_LOCAL_PREFIX "/etc/init.d"
+-#  define RC_LOCAL_CONFDIR      RC_LOCAL_PREFIX "/etc/conf.d"
++#  define RC_LOCAL_INITDIR      RC_LOCAL_PREFIX "@RC_INITDIR@"
++#  define RC_LOCAL_CONFDIR      RC_LOCAL_PREFIX "@RC_CONFDIR@"
+ #endif
+ 
+ #ifndef _SYS_QUEUE_H_
+diff --git a/src/openrc/rc.c b/src/openrc/rc.c
+index c1ca1bd7..3fa811b9 100644
+--- a/src/openrc/rc.c
++++ b/src/openrc/rc.c
+@@ -504,11 +504,12 @@ runlevel_config(const char *service, const char *level)
+ {
+ 	char *init = rc_service_resolve(service);
+ 	char *conf, *dir;
++	size_t prefixlen;
+ 	bool retval;
+ 
+ 	dir = dirname(init);
+-	dir = dirname(init);
+-	xasprintf(&conf, "%s/conf.d/%s.%s", dir, service, level);
++	prefixlen = strlen(dir) - strlen(RC_INITDIR);
++	xasprintf(&conf, "%.*s" RC_CONFDIR "/%s.%s", (int)prefixlen, dir, service, level);
+ 	retval = exists(conf);
+ 	free(conf);
+ 	free(init);
+diff --git a/tools/meson_runlevels.sh b/tools/meson_runlevels.sh
+index 1473d4e2..e7f53e70 100755
+--- a/tools/meson_runlevels.sh
++++ b/tools/meson_runlevels.sh
+@@ -6,11 +6,10 @@ set -u
+ os="$1"
+ net="$2"
+ rc_libexecdir="$3"
+-sysconfdir="$4"
+-sysvinit="$5"
++init_d_dir="$4"
++leveldir="$5"
++sysvinit="$6"
+ 
+-init_d_dir="${sysconfdir}/init.d"
+-leveldir="${sysconfdir}/runlevels"
+ sysinitdir="${leveldir}/sysinit"
+ bootdir="${leveldir}/boot"
+ defaultdir="${leveldir}/default"
+-- 
+2.39.2
+
