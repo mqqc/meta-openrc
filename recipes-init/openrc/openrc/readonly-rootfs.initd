@@ -1,0 +1,10 @@
+#!/sbin/openrc-run
+description="read-only rootfs remount"
+
+depend() {
+	before *
+}
+
+start() {
+	mount -o remount,ro /
+}

@@ -9,6 +9,7 @@ SRC_URI = " \
     file://volatiles.initd \
     file://getty.confd \
     file://getty.initd \
+    file://readonly-rootfs.initd \
     file://0001-allow-changing-init.d-and-conf.d-locations.patch \
     file://0002-allow-changing-runlevel-location.patch \
 "
@@ -75,7 +76,7 @@ do_install:append() {
     tty_count="${SYSVINIT_TTY_COUNT}" \
         envsubst < ${WORKDIR}/rc.conf.in > ${D}${sysconfdir}/rc.conf
 
-    for svc in getty volatiles; do
+    for svc in getty volatiles readonly-rootfs; do
         install -m 755 ${WORKDIR}/${svc}.initd ${D}${OPENRC_INITDIR}/${svc}
         ! [ -f ${WORKDIR}/${svc}.confd ] || install -m 644 ${WORKDIR}/${svc}.confd ${D}${OPENRC_CONFDIR}/${svc}
         sed -i "s|/sbin/openrc-run|${openrc_sbindir}/openrc-run|" ${D}${OPENRC_INITDIR}/${svc}
