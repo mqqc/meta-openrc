@@ -86,6 +86,13 @@ openrc_delete_services() {
     done
 }
 
+# Setup read-only-rootfs initscript if desired
+ROOTFS_PREPROCESS_COMMAND += "${@bb.utils.contains('IMAGE_FEATURES', 'read-only-rootfs', 'openc_readonly_rootfs; ', '', d)}"
+
+openrc_readonly_rootfs() {
+    ln -snf ${OPENRC_INITDIR}/readonly-rootfs ${IMAGE_ROOTFS}${OPENRC_RUNLEVELDIR}/sysinit
+}
+
 # Like oe-core/meta/classes/rootfs-postcommands, allow dropbear to accept
 # logins from accounts with an empty password string if debug-tweaks or
 # allow-empty-password is enabled.
