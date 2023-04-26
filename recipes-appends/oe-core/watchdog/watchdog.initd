@@ -6,7 +6,8 @@ depend() {
 }
 
 command_args="${COMMAND_ARGS}"
+command_args_foreground="-F"
 command="/usr/sbin/watchdog"
-pidfile="/var/run/watchdog.pid"
+supervisor=supervise-daemon
 
 # vim: noet ft=gentoo-init-d
