@@ -22,6 +22,8 @@ SRC_URI += " \
 "
 SRC_URI:remove = "${@oe.utils.conditional('VIRTUAL-RUNTIME_initscripts', 'openrc', 'rcS.default', '', d)}"
 RDEPENDS:${PN}:remove = "${@oe.utils.conditional('VIRTUAL-RUNTIME_initscripts', 'openrc', 'busybox-inittab', '', d)}"
+FILES:${PN}:remove = "${@oe.utils.conditional('VIRTUAL-RUNTIME_initscripts', 'openrc', d.expand('${sysconfdir}/init.d/busybox-cron ${sysconfdir}/init.d/mdev'), '', d)}"
+FILES:${PN}-syslog:remove = "${@oe.utils.conditional('VIRTUAL-RUNTIME_initscripts', 'openrc', d.expand('${sysconfdir}/init.d/syslog'), '', d)}"
 
 inherit openrc
 
@@ -35,6 +37,12 @@ do_install:append() {
     fi
 
     local svc
+    if [ "${VIRTUAL-RUNTIME_initscripts}" = openrc ]; then
+        for svc in busybox-cron mdev syslog; do
+            rm -f "${D}${sysconfdir}/init.d/${svc}"
+        done
+    fi
+
     for svc in acpid cron klogd httpd inetd mdev ntpd syslogd udhcpd; do
         openrc_install_initd ${WORKDIR}/busybox-${svc}.initd
         openrc_install_confd ${WORKDIR}/busybox-${svc}.confd
