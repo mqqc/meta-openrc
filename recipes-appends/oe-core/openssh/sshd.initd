@@ -1,9 +1,10 @@
 #!/sbin/openrc-run
 
-pidfile="/var/run/sshd.pid"
 command_args=${COMMAND_ARGS}
+command_args_foreground="-D"
 description="ssh daemon"
 command="/usr/sbin/sshd"
+supervisor=supervise-daemon
 
 extra_started_commands="reload"
 
