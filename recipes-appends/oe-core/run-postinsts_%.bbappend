@@ -15,6 +15,8 @@ do_install:append() {
         ${D}${sbindir}/run-postinsts
 
     openrc_install_initd ${WORKDIR}/run-postinsts.initd
-    install -d ${D}${sysconfdir}/runlevels/boot
-    ln -snf ${OPENRC_INITDIR}/run-postinsts ${D}${sysconfdir}/runlevels/boot
+    install -d ${D}${OPENRC_RUNLEVELDIR}/boot
+    ln -snf ${OPENRC_INITDIR}/run-postinsts ${D}${OPENRC_RUNLEVELDIR}/boot
 }
+
+FILES:${PN} += "${OPENRC_RUNLEVELDIR}/boot/run-postinsts"

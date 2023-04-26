@@ -1,0 +1,104 @@
+From accc307b06118ec0e330b2c8c2e1ae70eb54f92d Mon Sep 17 00:00:00 2001
+From: Mark Cilissen <mcilissen@qblox.com>
+Date: Thu, 20 Apr 2023 16:19:04 +0200
+Subject: [PATCH 2/2] allow changing runlevel location
+
+---
+ meson.build               | 6 +++++-
+ meson_options.txt         | 2 ++
+ sh/init-early.sh.Linux.in | 2 +-
+ sh/meson.build            | 1 +
+ src/librc/meson.build     | 1 +
+ src/librc/rc.h.in         | 2 +-
+ 6 files changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/meson.build b/meson.build
+index a1b062ed..bbddd7fe 100644
+--- a/meson.build
++++ b/meson.build
+@@ -116,6 +116,10 @@ rc_confdir = get_option('rc-confdir')
+ if rc_confdir == ''
+   rc_confdir = get_option('sysconfdir') / 'conf.d'
+ endif
++runleveldir = get_option('runleveldir')
++if runleveldir == ''
++  runleveldir = get_option('sysconfdir') / 'runlevels'
++endif
+ 
+ crypt_dep = []
+ 
+@@ -232,7 +236,7 @@ meson.add_install_script('tools/meson_runlevels.sh',
+   get_option('newnet') ? 'yes' : 'no',
+   rc_libexecdir,
+   rc_initdir,
+-  get_option('sysconfdir') / 'runlevels',
++  runleveldir,
+   get_option('sysvinit') ? 'yes' : 'no')
+ meson.add_install_script('tools/meson_final.sh',
+   rc_libexecdir,
+diff --git a/meson_options.txt b/meson_options.txt
+index 87adf70e..e6f120f7 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -26,6 +26,8 @@ option('rc-initdir', type : 'string',
+   description : 'default location of init scripts in prefix')
+ option('rootprefix', type : 'string',
+   description : 'override the root prefix')
++option('runleveldir', type : 'string',
++  description : 'default location of runlevel configuration')
+ option('selinux', type : 'feature', value : 'auto',
+   description : 'enable SELinux support')
+ option('shell', type : 'string', value : '/bin/sh',
+diff --git a/sh/init-early.sh.Linux.in b/sh/init-early.sh.Linux.in
+index 936a0d17..15129624 100644
+--- a/sh/init-early.sh.Linux.in
++++ b/sh/init-early.sh.Linux.in
+@@ -14,7 +14,7 @@
+ 
+ service_present()
+ {
+-	local p="@SYSCONFDIR@/runlevels/$1/$2"
++	local p="@RUNLEVELDIR@/$1/$2"
+ 	# fail if the file doesn't exist
+ 	[ ! -e "$p" ] && return 1
+ 	# succeed if $RC_SYS empty, can't check further, assume script will run
+diff --git a/sh/meson.build b/sh/meson.build
+index aaf5381e..fa927b08 100644
+--- a/sh/meson.build
++++ b/sh/meson.build
+@@ -13,6 +13,7 @@ sh_conf_data.set('SHELL', get_option('shell'))
+ sh_conf_data.set('SYSCONFDIR', get_option('sysconfdir'))
+ sh_conf_data.set('RC_INITDIR', rc_initdir)
+ sh_conf_data.set('RC_CONFDIR', rc_confdir)
++sh_conf_data.set('RUNLEVELDIR', runleveldir)
+ 
+ sh = [
+   'rc-functions.sh',
+diff --git a/src/librc/meson.build b/src/librc/meson.build
+index d6d13bb5..b1c4057c 100644
+--- a/src/librc/meson.build
++++ b/src/librc/meson.build
+@@ -11,6 +11,7 @@ rc_h_conf_data.set('PKG_PREFIX', pkg_prefix)
+ rc_h_conf_data.set('SYSCONFDIR', get_option('sysconfdir'))
+ rc_h_conf_data.set('RC_INITDIR', rc_initdir)
+ rc_h_conf_data.set('RC_CONFDIR', rc_confdir)
++rc_h_conf_data.set('RUNLEVELDIR', runleveldir)
+ 
+ librc_version = '1'
+ 
+diff --git a/src/librc/rc.h.in b/src/librc/rc.h.in
+index 642b2b7f..9755b49c 100644
+--- a/src/librc/rc.h.in
++++ b/src/librc/rc.h.in
+@@ -34,7 +34,7 @@ extern "C" {
+ #else
+ #define RC_SVCDIR               RC_LIBEXECDIR "/init.d"
+ #endif
+-#define RC_RUNLEVELDIR          RC_SYSCONFDIR "/runlevels"
++#define RC_RUNLEVELDIR          "@RUNLEVELDIR@"
+ #define RC_INITDIR              "@RC_INITDIR@"
+ #define RC_CONFDIR              "@RC_CONFDIR@"
+ #define RC_PLUGINDIR            RC_LIBDIR "/plugins"
+-- 
+2.39.2
+

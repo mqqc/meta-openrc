@@ -9,6 +9,8 @@ SRC_URI = " \
     file://volatiles.initd \
     file://getty.confd \
     file://getty.initd \
+    file://0001-allow-changing-init.d-and-conf.d-locations.patch \
+    file://0002-allow-changing-runlevel-location.patch \
 "
 
 S = "${WORKDIR}/git"
@@ -33,6 +35,9 @@ openrc_libdir = "${@bb.utils.contains('PACKAGECONFIG', 'usrmerge', '${libdir}', 
 EXTRA_OEMESON += " \
     -Dos=Linux \
     -Dpkg_prefix=${prefix} \
+    -Drc-initdir=${OPENRC_INITDIR} \
+    -Drc-confdir=${OPENRC_CONFDIR} \
+    -Drunleveldir=${OPENRC_RUNLEVELDIR} \
     -Dsysvinit=true \
 "
 
@@ -45,7 +50,7 @@ add_getty() {
     local baud="$2"
     local term="$3"
     ln -snf getty ${D}${OPENRC_INITDIR}/getty.${dev}
-    ln -snf ${OPENRC_INITDIR}/getty.${dev} ${D}${sysconfdir}/runlevels/default
+    ln -snf ${OPENRC_INITDIR}/getty.${dev} ${D}${OPENRC_RUNLEVELDIR}/default
     echo "baud=${baud}" > ${D}${OPENRC_CONFDIR}/getty.${dev}
     if [ -n "${term}" ]; then
         echo "term_type=${term}" >> ${D}${OPENRC_CONFDIR}/getty.${dev}
@@ -65,7 +70,7 @@ symlink_multicalls() {
 do_install:append() {
     # Default sysvinit doesn't do anything with keymaps on a minimal install so
     # we're not going to either.
-    rm ${D}${sysconfdir}/runlevels/*/keymaps
+    rm ${D}${OPENRC_RUNLEVELDIR}/*/keymaps
 
     tty_count="${SYSVINIT_TTY_COUNT}" \
         envsubst < ${WORKDIR}/rc.conf.in > ${D}${sysconfdir}/rc.conf
@@ -75,7 +80,7 @@ do_install:append() {
         ! [ -f ${WORKDIR}/${svc}.confd ] || install -m 644 ${WORKDIR}/${svc}.confd ${D}${OPENRC_CONFDIR}/${svc}
         sed -i "s|/sbin/openrc-run|${openrc_sbindir}/openrc-run|" ${D}${OPENRC_INITDIR}/${svc}
     done
-    ln -snf ${OPENRC_INITDIR}/volatiles ${D}${sysconfdir}/runlevels/boot
+    ln -snf ${OPENRC_INITDIR}/volatiles ${D}${OPENRC_RUNLEVELDIR}/boot
 
     if ! ${@bb.utils.contains('DISTRO_FEATURES', 'openrc', 'true', 'false', d)}; then
         install -d ${D}${sysconfdir}/openrc
@@ -90,7 +95,7 @@ do_install:append() {
 
     # Remove bonus TTY scripts installed when -Dsysvinit=true is selected, and add the correct ones.
     for x in 1 2 3 4 5 6; do
-        rm ${D}${OPENRC_INITDIR}/agetty.tty${x} ${D}${sysconfdir}/runlevels/default/agetty.tty${x}
+        rm ${D}${OPENRC_INITDIR}/agetty.tty${x} ${D}${OPENRC_RUNLEVELDIR}/default/agetty.tty${x}
     done
     consoles="$(echo "${SERIAL_CONSOLES}" | tr ';' ',')"
     for entry in ${consoles}; do
@@ -152,7 +157,7 @@ RPROVIDES:${PN}-init = " \
 RPROVIDES:${PN}-network-scripts = "virtual/openrc-network-scripts"
 
 FILES:${PN}-doc:append = " ${datadir}/${BPN}/support"
-FILES:${PN}:append = " ${openrc_libdir}/rc/"
+FILES:${PN}:append = " ${openrc_libdir}/rc/ ${OPENRC_CONFDIR}/* ${OPENRC_INITDIR}/* ${OPENRC_RUNLEVELDIR}/*"
 FILES:${PN}-init = " \
     ${openrc_sbindir}/init \
     ${openrc_sbindir}/halt \
@@ -165,15 +170,15 @@ FILES:${PN}-init = " \
     ${OPENRC_CONFDIR}/getty.* \
     ${OPENRC_INITDIR}/getty \
     ${OPENRC_INITDIR}/getty.* \
-    ${sysconfdir}/runlevels/default/getty.* \
+    ${OPENRC_RUNLEVELDIR}/default/getty.* \
 "
 FILES:${PN}-network-scripts = " \
     ${OPENRC_CONFDIR}/network \
     ${OPENRC_INITDIR}/network \
     ${OPENRC_CONFDIR}/staticroute \
     ${OPENRC_INITDIR}/staticroute \
-    ${sysconfdir}/runlevels/boot/network \
-    ${sysconfdir}/runlevels/boot/staticroute \
+    ${OPENRC_RUNLEVELDIR}/boot/network \
+    ${OPENRC_RUNLEVELDIR}/boot/staticroute \
 "
 
 inherit update-alternatives

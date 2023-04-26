@@ -28,13 +28,13 @@ openrc_stack_runlevels() {
         base=${stack##*:}
         stacked=${stack%%:*}
 
-        [ ! -d ${IMAGE_ROOTFS}${sysconfdir}/runlevels/${stacked} ] \
-            && install -d ${IMAGE_ROOTFS}${sysconfdir}/runlevels/${stacked}
+        [ ! -d ${IMAGE_ROOTFS}${OPENRC_RUNLEVELDIR}/${stacked} ] \
+            && install -d ${IMAGE_ROOTFS}${OPENRC_RUNLEVELDIR}/${stacked}
 
-        [ ! -d ${IMAGE_ROOTFS}${sysconfdir}/runlevels/${base} ] \
-            && install -d ${IMAGE_ROOTFS}${sysconfdir}/runlevels/${base}
+        [ ! -d ${IMAGE_ROOTFS}${OPENRC_RUNLEVELDIR}/${base} ] \
+            && install -d ${IMAGE_ROOTFS}${OPENRC_RUNLEVELDIR}/${base}
 
-        ln -snf ../${base} ${IMAGE_ROOTFS}${sysconfdir}/runlevels/${stacked}/
+        ln -snf ../${base} ${IMAGE_ROOTFS}${OPENRC_RUNLEVELDIR}/${stacked}/
     done
 }
 
@@ -51,10 +51,10 @@ openrc_add_services() {
             bbfatal "No openrc service named '${svc}' found."
         fi
 
-        [ ! -d ${IMAGE_ROOTFS}${sysconfdir}/runlevels/${runlevel} ] \
-            && install -d ${IMAGE_ROOTFS}${sysconfdir}/runlevels/${runlevel}
+        [ ! -d ${IMAGE_ROOTFS}${OPENRC_RUNLEVELDIR}/${runlevel} ] \
+            && install -d ${IMAGE_ROOTFS}${OPENRC_RUNLEVELDIR}/${runlevel}
 
-        ln -snf ${OPENRC_INITDIR}/${svc} ${IMAGE_ROOTFS}${sysconfdir}/runlevels/${runlevel}
+        ln -snf ${OPENRC_INITDIR}/${svc} ${IMAGE_ROOTFS}${OPENRC_RUNLEVELDIR}/${runlevel}
     done
 }
 
@@ -63,7 +63,7 @@ openrc_disable_services() {
         runlevel=${pair%%:*}
         svc=${pair##*:}
 
-        svcfile="${IMAGE_ROOTFS}${sysconfdir}/runlevels/${runlevel}/${svc}"
+        svcfile="${IMAGE_ROOTFS}${OPENRC_RUNLEVELDIR}/${runlevel}/${svc}"
         if ! [ -L "$svcfile" ]; then
             bbfatal "No openrc service named '${svc}' found in runlevel '${runlevel}."
         fi
@@ -78,7 +78,7 @@ openrc_delete_services() {
             bbfatal "No openrc service named '${svc}' found."
         fi
         rm -f "$svcfile" "${IMAGE_ROOTFS}${OPENRC_CONFDIR}/${svc}"
-        for rundir in "${IMAGE_ROOTFS}${sysconfdir}/runlevels/"*; do
+        for rundir in "${IMAGE_ROOTFS}${OPENRC_RUNLEVELDIR}/"*; do
             if [ -L "$rundir/$svc" ] && ! [ -f "$rundir/$svc" ]; then
                 rm "$rundir/$svc"
             fi
