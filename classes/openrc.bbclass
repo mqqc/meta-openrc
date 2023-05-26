@@ -9,7 +9,7 @@ OPENRC_SERVICES ?= "${PN}"
 OPENRC_AUTO_ENABLE ??= "disabled"
 OPENRC_RUNLEVEL ??= "default"
 
-RDEPENDS:${PN}:append = " ${@bb.utils.contains('DISTRO_FEATURES', 'openrc', 'openrc', '', d)}"
+RDEPENDS:${PN}:append = " ${@d.getVar('OPENRC_PACKAGES') and bb.utils.contains('DISTRO_FEATURES', 'openrc', 'openrc', '', d)}"
 
 python __anonymous() {
     # Inhibit update-rc.d from doing anything as the contents of /etc/init.d
