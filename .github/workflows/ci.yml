@@ -52,14 +52,18 @@ jobs:
       - name: Initialize build directory
         run: |
           source poky/oe-init-build-env build
+          bitbake-layers add-layer ../meta-openrc
           echo 'INHERIT += "rm_work"' >> conf/local.conf
           echo 'DISTRO_FEATURES:remove = "alsa bluetooth usbgadget zeroconf 3g nfc x11 opengl ptest wayland vulkan gobject-introspection-data"' >> conf/local.conf
           echo 'BB_SIGNATURE_HANDLER = "OEEquivHash"' >> conf/local.conf
           echo 'SSTATE_MIRRORS += "file://.* http://sstate.yoctoproject.org/all/PATH;downloadfilename=PATH"' >> conf/local.conf
           echo 'BB_HASHSERVE = "auto"' >> conf/local.conf
           echo 'BB_HASHSERVE_UPSTREAM = "hashserv.yocto.io:8687"' >> conf/local.conf
-          echo 'DISTRO_FEATURES += "openrc"' >> conf/local.conf
-          bitbake-layers add-layer ../meta-openrc
+          if [ ${{ env.OE_BRANCH }} != "kirkstone" ]; then
+            echo 'INIT_MANAGER = "openrc"' >> conf/local.conf
+          else
+            echo 'DISTRO_FEATURES += "openrc"' >> conf/local.conf
+          fi
       - name: Build operc image
         run: |
           source poky/oe-init-build-env build
