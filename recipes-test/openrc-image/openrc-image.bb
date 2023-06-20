@@ -22,7 +22,15 @@ OPENRC_SERVICES += " \
 "
 
 boot_to_logging() {
-    sed -i '/^l[345]/s,default,logging,' ${IMAGE_ROOTFS}${sysconfdir}/inittab
+    local mgr=${@d.getVar('VIRTUAL-RUNTIME_init_manager')}
+
+    if [ "${mgr}" = "sysvinit" ]; then
+        sed -i '/^l[345]/s,default,logging,' ${IMAGE_ROOTFS}${sysconfdir}/inittab
+    elif [ "${mgr}" = "busybox" ]; then
+        sed -i 's/openrc default/openrc logging/' ${IMAGE_ROOTFS}${sysconfdir}/inittab
+    elif [ "${mgr}" = "openrc-init" ]; then
+        sed -i 's/^#\(rc_default_runlevel="\).*/\1logging"/' ${IMAGE_ROOTFS}${sysconfdir}/rc.conf
+    fi
 }
 ROOTFS_POSTPROCESS_COMMAND += "${@bb.utils.contains('DISTRO_FEATURES', 'openrc', 'boot_to_logging; ', '', d)}"
 
