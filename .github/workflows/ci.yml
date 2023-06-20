@@ -5,10 +5,12 @@ on:
     branches:
       - master
       - kirkstone
+      - mickledore
   pull_request:
     branches:
       - master
       - kirkstone
+      - mickledore
   schedule:
     - cron: 11 2 * * 0
 
