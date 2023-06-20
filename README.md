@@ -38,9 +38,9 @@ Usage
 
     `bitbake-layers add-layer /path/to/meta-openrc`
 
-2. Add *openrc* to *DISTRO_FEATURES* in your distro or local config:
+2. Set *INIT_MANAGER* to *openrc* in your distro or local config:
 
-    `DISTRO_FEATURES += "openrc"`
+    `INIT_MANAGER = "openrc"`
 
 3. Update your image to `inherit openrc-image` and set the following as
    necessary (see [openrc-image.bb](recipes-test/openrc-image/openrc-image.bb)
@@ -54,6 +54,11 @@ Usage
        other runlevels using a whitespace delimited list of *[base
        runlevel]:[stacked runlevel]*
 
+Note on pre-mickledore releases
+-------------------------------
+Prior to mickledore, this layer did not have the *INIT_MANAGER* configuration
+hook.  Instead it was necessary to add *openrc* to *DISTRO_FEATURES*.  See
+https://github.com/jsbronder/meta-openrc/pull/24.
 
 Note on pre-kirkstone releases
 -------------------------------
