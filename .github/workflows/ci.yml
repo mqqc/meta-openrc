@@ -36,7 +36,7 @@ jobs:
         run: |
           sudo apt-get install diffstat
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: meta-openrc
       - name: Shared-State Cache
@@ -95,7 +95,7 @@ jobs:
         run: |
           sudo apt-get install diffstat
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: meta-openrc
       - name: Clone Poky
