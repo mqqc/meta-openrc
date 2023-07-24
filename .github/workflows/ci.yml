@@ -40,7 +40,7 @@ jobs:
         with:
           path: meta-openrc
       - name: Shared-State Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             build/sstate-cache
