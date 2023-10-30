@@ -1,14 +1,13 @@
 LICENSE = "BSD-2-Clause"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=18590035fb3f5120d3a5e4b781f9ae25"
 
-SRCREV = "92662ddc44f6091e8085fcd4637d13f04e90c5ac"
+SRCREV = "a2f002f1a87bb7e13a214721717f5e2fec5f3571"
 
 SRC_URI = " \
     git://github.com/openrc/openrc.git;nobranch=1;protocol=https \
     file://volatiles.initd \
     file://getty.confd \
     file://getty.initd \
-    file://0001-Don-t-re-define-strlcpy-strlcat-with-glibc-2.38.patch \
 "
 
 S = "${WORKDIR}/git"
