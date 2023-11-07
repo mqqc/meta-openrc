@@ -6,11 +6,13 @@ on:
       - master
       - kirkstone
       - mickledore
+      - nanbield
   pull_request:
     branches:
       - master
       - kirkstone
       - mickledore
+      - nanbield
   schedule:
     - cron: 11 2 * * 0
 
