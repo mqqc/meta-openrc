@@ -1,4 +1,4 @@
-From accc307b06118ec0e330b2c8c2e1ae70eb54f92d Mon Sep 17 00:00:00 2001
+From d10739cd093db0ec0b213dbd4ce77a418364a92d Mon Sep 17 00:00:00 2001
 From: Mark Cilissen <mcilissen@qblox.com>
 Date: Thu, 20 Apr 2023 16:19:04 +0200
 Subject: [PATCH 2/2] allow changing runlevel location
@@ -13,7 +13,7 @@ Subject: [PATCH 2/2] allow changing runlevel location
  6 files changed, 11 insertions(+), 3 deletions(-)
 
 diff --git a/meson.build b/meson.build
-index a1b062ed..bbddd7fe 100644
+index b3a4f970..af0620f4 100644
 --- a/meson.build
 +++ b/meson.build
 @@ -116,6 +116,10 @@ rc_confdir = get_option('rc-confdir')
@@ -27,7 +27,7 @@ index a1b062ed..bbddd7fe 100644
  
  crypt_dep = []
  
-@@ -232,7 +236,7 @@ meson.add_install_script('tools/meson_runlevels.sh',
+@@ -245,7 +249,7 @@ meson.add_install_script('tools/meson_runlevels.sh',
    get_option('newnet') ? 'yes' : 'no',
    rc_libexecdir,
    rc_initdir,
