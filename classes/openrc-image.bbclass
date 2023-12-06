@@ -87,7 +87,7 @@ openrc_delete_services() {
 }
 
 # Setup read-only-rootfs initscript if desired
-ROOTFS_PREPROCESS_COMMAND += "${@bb.utils.contains('IMAGE_FEATURES', 'read-only-rootfs', 'openc_readonly_rootfs; ', '', d)}"
+ROOTFS_POSTINSTALL_COMMAND += "${@bb.utils.contains('IMAGE_FEATURES', 'read-only-rootfs', 'openrc_readonly_rootfs; ', '', d)}"
 
 openrc_readonly_rootfs() {
     ln -snf ${OPENRC_INITDIR}/readonly-rootfs ${IMAGE_ROOTFS}${OPENRC_RUNLEVELDIR}/sysinit
